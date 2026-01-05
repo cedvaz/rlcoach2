@@ -16,8 +16,8 @@ const ScoreBar = ({ label, score, color }: { label: string, score: number, color
       <span>{score}%</span>
     </div>
     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-      <div 
-        className={`h-full transition-all duration-1000 ${color}`} 
+      <div
+        className={`h-full transition-all duration-1000 ${color}`}
         style={{ width: `${score}%` }}
       />
     </div>
@@ -30,7 +30,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ logs, toxicAnalysis, onEditL
   // --- CALENDAR GRID LOGIC ---
   const calendarDays = [];
   const today = new Date();
-  
+
   // Create last 30 days grid (Today is last)
   for (let i = 29; i >= 0; i--) {
     const d = new Date();
@@ -43,7 +43,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ logs, toxicAnalysis, onEditL
   const greenDays = logs.filter(l => l.calculatedScore >= 80).length;
   const yellowDays = logs.filter(l => l.calculatedScore >= 50 && l.calculatedScore < 80).length;
   const redDays = logs.filter(l => l.calculatedScore < 50).length;
-  
+
   const energyData = logs.slice(0, 7).reverse().map(l => ({
     date: new Date(l.date).toLocaleDateString('de-DE', { weekday: 'short' }),
     val: l.energy
@@ -70,7 +70,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ logs, toxicAnalysis, onEditL
       </header>
 
       <div className="grid gap-6">
-        
+
         {/* 1. CLARITY CALENDAR (Real 30-Day Grid) */}
         <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
           <div className="flex items-center justify-between mb-6">
@@ -81,37 +81,36 @@ export const Analysis: React.FC<AnalysisProps> = ({ logs, toxicAnalysis, onEditL
               <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-200"></div> Missing</span>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-7 gap-2">
             {calendarDays.map((day, i) => (
-              <button 
+              <button
                 key={i}
                 onClick={() => onEditLog(day.date)}
-                className={`aspect-square rounded-lg border-2 relative group transition-all duration-300 active:scale-90 ${
-                  day.log 
-                    ? `${getStatusColor(day.log.calculatedScore)} border-transparent shadow-sm hover:brightness-110` 
+                className={`aspect-square rounded-lg border-2 relative group transition-all duration-300 active:scale-90 ${day.log
+                    ? `${getStatusColor(day.log.calculatedScore)} border-transparent shadow-sm hover:brightness-110`
                     : 'bg-slate-50 border-slate-100 border-dashed hover:border-purple-300 hover:bg-purple-50'
-                }`}
+                  }`}
                 title={day.log ? `${day.date}: ${day.log.calculatedScore}%` : `${day.date}: Missing`}
               >
                 {!day.log && <Plus size={10} className="absolute inset-0 m-auto text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />}
               </button>
             ))}
           </div>
-          
+
           <div className="grid grid-cols-3 gap-2 mt-6">
-             <div className="bg-emerald-50 p-3 rounded-2xl text-center">
-                <div className="text-lg font-black text-emerald-700">{greenDays}</div>
-                <div className="text-[9px] font-black text-emerald-600/70 uppercase tracking-tighter">Healthy</div>
-             </div>
-             <div className="bg-amber-50 p-3 rounded-2xl text-center">
-                <div className="text-lg font-black text-amber-700">{yellowDays}</div>
-                <div className="text-[9px] font-black text-amber-600/70 uppercase tracking-tighter">Warning</div>
-             </div>
-             <div className="bg-rose-50 p-3 rounded-2xl text-center">
-                <div className="text-lg font-black text-rose-700">{redDays}</div>
-                <div className="text-[9px] font-black text-rose-600/70 uppercase tracking-tighter">Critical</div>
-             </div>
+            <div className="bg-emerald-50 p-3 rounded-2xl text-center">
+              <div className="text-lg font-black text-emerald-700">{greenDays}</div>
+              <div className="text-[9px] font-black text-emerald-600/70 uppercase tracking-tighter">Healthy</div>
+            </div>
+            <div className="bg-amber-50 p-3 rounded-2xl text-center">
+              <div className="text-lg font-black text-amber-700">{yellowDays}</div>
+              <div className="text-[9px] font-black text-amber-600/70 uppercase tracking-tighter">Warning</div>
+            </div>
+            <div className="bg-rose-50 p-3 rounded-2xl text-center">
+              <div className="text-lg font-black text-rose-700">{redDays}</div>
+              <div className="text-[9px] font-black text-rose-600/70 uppercase tracking-tighter">Critical</div>
+            </div>
           </div>
         </div>
 
@@ -140,18 +139,19 @@ export const Analysis: React.FC<AnalysisProps> = ({ logs, toxicAnalysis, onEditL
             </div>
           </div>
         ) : (
-          <div className="bg-slate-900 text-white p-6 rounded-[2.5rem] relative overflow-hidden group">
+          <div className="bg-gradient-to-br from-purple-500 to-rose-500 text-white p-6 rounded-[2.5rem] relative overflow-hidden group">
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-2">
-                <div className="px-2 py-0.5 bg-rose-500 text-[10px] font-black uppercase rounded-full tracking-wider">Premium</div>
+                <ShieldAlert size={20} />
                 <h3 className="font-black text-xl tracking-tight">Toxic Pattern Check</h3>
               </div>
-              <p className="text-slate-300 text-sm mb-4 font-medium leading-relaxed">
-                Analyze hidden patterns of control or gaslighting from your logged history.
+              <p className="text-white/90 text-sm mb-4 font-medium leading-relaxed">
+                Ready to analyze hidden patterns? Go to the Chat tab and click "Start Toxic Check" to begin your deep analysis.
               </p>
-              <button className="bg-white text-slate-900 px-6 py-3 rounded-2xl text-sm font-black hover:scale-105 transition-transform">
-                Unlock Clarity Pass
-              </button>
+              <div className="flex items-center gap-2 text-xs font-bold bg-white/20 px-3 py-2 rounded-xl">
+                <span>💬</span>
+                <span>Available in Chat</span>
+              </div>
             </div>
           </div>
         )}
@@ -189,16 +189,16 @@ export const Analysis: React.FC<AnalysisProps> = ({ logs, toxicAnalysis, onEditL
                     {isExpanded && (
                       <div className="px-4 pb-4 animate-fade-in text-xs space-y-3">
                         <div className="grid grid-cols-2 gap-2">
-                           <div className="p-2 bg-white rounded-lg border border-purple-50">
-                              <span className="block opacity-50 mb-1">Energy</span>
-                              <span className="font-bold">{log.energy === 1 ? '🔋 High' : log.energy === -1 ? '🪫 Low' : '😐 Mid'}</span>
-                           </div>
-                           <div className="p-2 bg-white rounded-lg border border-purple-50">
-                              <span className="block opacity-50 mb-1">Respect</span>
-                              <span className={`font-bold ${log.redFlag ? 'text-rose-600' : 'text-emerald-600'}`}>{log.redFlag ? '🚩 Issue' : '✅ Okay'}</span>
-                           </div>
+                          <div className="p-2 bg-white rounded-lg border border-purple-50">
+                            <span className="block opacity-50 mb-1">Energy</span>
+                            <span className="font-bold">{log.energy === 1 ? '🔋 High' : log.energy === -1 ? '🪫 Low' : '😐 Mid'}</span>
+                          </div>
+                          <div className="p-2 bg-white rounded-lg border border-purple-50">
+                            <span className="block opacity-50 mb-1">Respect</span>
+                            <span className={`font-bold ${log.redFlag ? 'text-rose-600' : 'text-emerald-600'}`}>{log.redFlag ? '🚩 Issue' : '✅ Okay'}</span>
+                          </div>
                         </div>
-                        <button 
+                        <button
                           onClick={() => onEditLog(log.date)}
                           className="w-full py-2 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest"
                         >
@@ -219,16 +219,16 @@ export const Analysis: React.FC<AnalysisProps> = ({ logs, toxicAnalysis, onEditL
             <Activity size={16} className="text-indigo-500" /> Energy Flow
           </h3>
           <div className="h-40">
-             <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={energyData}>
-                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} />
-                 <Bar dataKey="val" radius={[6, 6, 6, 6]}>
-                   {energyData.map((entry, index) => (
-                     <Cell key={`cell-${index}`} fill={entry.val === 1 ? '#10b981' : entry.val === -1 ? '#f43f5e' : '#cbd5e1'} />
-                   ))}
-                 </Bar>
-               </BarChart>
-             </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={energyData}>
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
+                <Bar dataKey="val" radius={[6, 6, 6, 6]}>
+                  {energyData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.val === 1 ? '#10b981' : entry.val === -1 ? '#f43f5e' : '#cbd5e1'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
