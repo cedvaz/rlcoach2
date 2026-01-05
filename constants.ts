@@ -1,4 +1,4 @@
-import { ChartColumn, Home, MessageCircle, PlusCircle } from "lucide-react";
+import { BarChart, Home, MessageCircle, PlusCircle } from "lucide-react";
 
 export const MARA_SYSTEM_INSTRUCTION = `
 You are Mara, an empathetic relationship therapist and supportive best friend. 
@@ -33,7 +33,7 @@ export const APP_NAME = "Mara";
 export const NAV_ITEMS = [
   { id: 'DASHBOARD', label: 'Home', icon: Home },
   { id: 'TRACKER', label: 'Log', icon: PlusCircle },
-  { id: 'ANALYSIS', label: 'Insight', icon: ChartColumn },
+  { id: 'ANALYSIS', label: 'Insight', icon: BarChart },
   { id: 'CHAT', label: 'Mara', icon: MessageCircle },
 ];
 
