@@ -58,6 +58,13 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  lastUpdated: number;
+}
+
 export interface ClarityMetrics {
   currentScore: number;
   trend: 'up' | 'down' | 'stable';

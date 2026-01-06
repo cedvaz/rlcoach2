@@ -1,24 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChatMessage, DailyLog } from '../types';
+import { ChatMessage, DailyLog, ChatSession } from '../types';
 import { initializeChat, sendMessageToMara, resetChatSession } from '../services/geminiService';
-import { saveChatHistory, getUser, clearChatHistory } from '../services/storageService';
-import { Send, Bot, Loader2, RotateCcw } from 'lucide-react';
+import { saveChatSession, deleteChatSession, getUser } from '../services/storageService';
+import { Send, Bot, Loader2, RotateCcw, Menu, Plus, MessageSquare, Trash2, X } from 'lucide-react';
 
 interface ChatProps {
   logs: DailyLog[];
-  history: ChatMessage[];
-  onUpdateHistory: (msgs: ChatMessage[]) => void;
+  sessions: ChatSession[];
+  activeSessionId: string | null;
+  onUpdateSessions: (sessions: ChatSession[]) => void;
+  onActiveSessionChange: (id: string | null) => void;
   onRefreshUser?: () => void;
 }
 
-export const Chat: React.FC<ChatProps> = ({ logs, history, onUpdateHistory, onRefreshUser }) => {
+export const Chat: React.FC<ChatProps> = ({
+  logs,
+  sessions,
+  activeSessionId,
+  onUpdateSessions,
+  onActiveSessionChange,
+  onRefreshUser
+}) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const activeSession = sessions.find(s => s.id === activeSessionId) || null;
+  const history = activeSession?.messages || [];
+
   useEffect(() => {
-    initializeChat(logs, history);
-  }, []);
+    if (activeSessionId) {
+      initializeChat(logs, history);
+    }
+  }, [activeSessionId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -26,18 +41,46 @@ export const Chat: React.FC<ChatProps> = ({ logs, history, onUpdateHistory, onRe
     }
   }, [history, isLoading]);
 
-  const handleReset = () => {
-    if (window.confirm("Do you want to clear the conversation and start again?")) {
-      clearChatHistory();
-      onUpdateHistory([]);
-      resetChatSession();
-      // Re-initialize a fresh session
-      initializeChat(logs, []);
+  const handleCreateNewChat = () => {
+    const newSession: ChatSession = {
+      id: Date.now().toString(),
+      title: 'New Conversation',
+      messages: [],
+      lastUpdated: Date.now()
+    };
+    const updated = saveChatSession(newSession);
+    onUpdateSessions(updated);
+    onActiveSessionChange(newSession.id);
+    setIsSidebarOpen(false);
+    resetChatSession();
+  };
+
+  const handleDeleteSession = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (window.confirm("Delete this conversation?")) {
+      const updated = deleteChatSession(id);
+      onUpdateSessions(updated);
+      if (activeSessionId === id) {
+        onActiveSessionChange(updated.length > 0 ? updated[0].id : null);
+      }
     }
   };
 
   const handleSend = async () => {
     if (!input.trim()) return;
+
+    let currentSession = activeSession;
+
+    if (!currentSession) {
+      const newSession: ChatSession = {
+        id: Date.now().toString(),
+        title: input.slice(0, 30) + (input.length > 30 ? '...' : ''),
+        messages: [],
+        lastUpdated: Date.now()
+      };
+      currentSession = newSession;
+      onActiveSessionChange(newSession.id);
+    }
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -46,9 +89,23 @@ export const Chat: React.FC<ChatProps> = ({ logs, history, onUpdateHistory, onRe
       timestamp: Date.now()
     };
 
-    const updatedHistory = [...history, userMsg];
-    onUpdateHistory(updatedHistory);
-    saveChatHistory(updatedHistory);
+    const updatedHistory = [...currentSession.messages, userMsg];
+
+    // Update title if it's the first message
+    const updatedTitle = currentSession.messages.length === 0
+      ? input.slice(0, 30) + (input.length > 30 ? '...' : '')
+      : currentSession.title;
+
+    const updatedSession: ChatSession = {
+      ...currentSession,
+      title: updatedTitle,
+      messages: updatedHistory,
+      lastUpdated: Date.now()
+    };
+
+    const nextSessions = saveChatSession(updatedSession);
+    onUpdateSessions(nextSessions);
+
     setInput('');
     setIsLoading(true);
 
@@ -61,62 +118,128 @@ export const Chat: React.FC<ChatProps> = ({ logs, history, onUpdateHistory, onRe
       timestamp: Date.now()
     };
 
-    const finalHistory = [...updatedHistory, modelMsg];
-    onUpdateHistory(finalHistory);
-    saveChatHistory(finalHistory);
+    const finalSession: ChatSession = {
+      ...updatedSession,
+      messages: [...updatedHistory, modelMsg],
+      lastUpdated: Date.now()
+    };
+
+    const finalSessions = saveChatSession(finalSession);
+    onUpdateSessions(finalSessions);
     setIsLoading(false);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 pb-20 overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-50 pb-20 overflow-hidden relative">
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="absolute inset-0 bg-slate-900/40 z-40 transition-opacity backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Drawer */}
+      <div className={`absolute left-0 top-0 h-full w-72 bg-white z-50 shadow-2xl transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-4 pt-12 flex flex-col h-full">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-black text-xl tracking-tight text-slate-900">History</h2>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-slate-400">
+              <X size={20} />
+            </button>
+          </div>
+
+          <button
+            onClick={handleCreateNewChat}
+            className="flex items-center gap-2 w-full p-4 mb-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-100 hover:bg-purple-700 transition-all hover:scale-[1.02]"
+          >
+            <Plus size={20} /> New Chat
+          </button>
+
+          <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar">
+            {sessions.map(s => (
+              <div
+                key={s.id}
+                onClick={() => { onActiveSessionChange(s.id); setIsSidebarOpen(false); }}
+                className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${activeSessionId === s.id
+                    ? 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm'
+                    : 'bg-white border-transparent hover:bg-slate-50 text-slate-600'
+                  }`}
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <MessageSquare size={18} className={activeSessionId === s.id ? 'text-purple-600' : 'text-slate-400'} />
+                  <span className="text-sm font-bold truncate">{s.title}</span>
+                </div>
+                <button
+                  onClick={(e) => handleDeleteSession(e, s.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-600 transition-all"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+            {sessions.length === 0 && (
+              <p className="text-center text-slate-400 text-xs mt-8">No previous chats yet.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white border-b border-slate-200 p-4 pt-12 shadow-sm sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-full text-purple-600">
-              <Bot size={24} />
-            </div>
-            <div>
-              <h1 className="font-bold text-slate-900">Mara</h1>
-              <p className="text-xs text-green-600 font-bold flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online
-              </p>
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <Menu size={24} />
+            </button>
+            <div className="p-1 px-3 bg-purple-100 rounded-full text-purple-600 flex items-center gap-2">
+              <Bot size={20} />
+              <span className="text-sm font-black tracking-tight">MARA</span>
             </div>
           </div>
-          <button
-            onClick={handleReset}
-            className="p-2 text-slate-400 hover:text-rose-500 transition-colors flex items-center gap-1 hover:bg-rose-50 rounded-lg"
-            title="Reset Conversation"
-          >
-            <RotateCcw size={18} />
-            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Reset</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCreateNewChat}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+              title="New Chat"
+            >
+              <Plus size={24} />
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-        {history.length === 0 && (
+        {!activeSession || history.length === 0 ? (
           <div className="text-center text-slate-500 mt-12 px-8">
-            <p className="mb-2 font-bold text-lg text-slate-900">👋 Hi! I'm Mara.</p>
-            <p className="text-sm font-medium text-slate-600">I'm here to listen without judgment. How are you feeling about things today?</p>
+            <div className="w-16 h-16 bg-purple-100 rounded-3xl flex items-center justify-center text-purple-600 mx-auto mb-6 shadow-inner">
+              <Bot size={32} />
+            </div>
+            <p className="mb-2 font-black text-2xl tracking-tight text-slate-900">How can I help today?</p>
+            <p className="text-sm font-medium text-slate-500 max-w-[240px] mx-auto leading-relaxed">
+              I'm Mara, your clarity companion. We can talk about your day, or start a deep analysis.
+            </p>
             <button
               onClick={() => setInput("I'd like to do a Toxic Check.")}
-              className="mt-4 px-4 py-2 bg-purple-50 text-purple-700 rounded-full text-xs font-bold border border-purple-100"
+              className="mt-8 px-6 py-3 bg-white text-purple-700 rounded-2xl text-sm font-black border-2 border-purple-100 shadow-sm hover:border-purple-200 transition-all flex items-center gap-2 mx-auto"
             >
               Start Toxic Check 🔍
             </button>
           </div>
-        )}
-
-        {history.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm font-medium ${msg.role === 'user'
-              ? 'bg-purple-600 text-white rounded-br-none'
-              : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
-              }`}>
-              {msg.text}
+        ) : (
+          history.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm font-medium ${msg.role === 'user'
+                  ? 'bg-purple-600 text-white rounded-br-none'
+                  : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
+                }`}>
+                {msg.text}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
 
         {isLoading && (
           <div className="flex justify-start">
@@ -132,7 +255,7 @@ export const Chat: React.FC<ChatProps> = ({ logs, history, onUpdateHistory, onRe
         <div className="flex gap-2">
           <input
             type="text"
-            className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all text-slate-900 font-medium placeholder-slate-400"
+            className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all text-slate-900 font-medium placeholder-slate-400 shadow-inner"
             placeholder="Type a message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -142,7 +265,7 @@ export const Chat: React.FC<ChatProps> = ({ logs, history, onUpdateHistory, onRe
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="bg-purple-600 text-white p-3 rounded-xl disabled:opacity-50 hover:bg-purple-700 transition-colors shadow-lg shadow-purple-100 flex items-center justify-center"
+            className="bg-purple-600 text-white p-3 rounded-xl disabled:opacity-50 hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200 flex items-center justify-center"
           >
             <Send size={20} />
           </button>

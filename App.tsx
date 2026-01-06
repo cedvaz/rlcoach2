@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ViewState, UserProfile, DailyLog, ChatMessage } from './types';
-import { getUser, getLogs, getChatHistory } from './services/storageService';
+import { ViewState, UserProfile, DailyLog, ChatMessage, ChatSession } from './types';
+import { getUser, getLogs, getChatSessions, getActiveSessionId, setActiveSessionId } from './services/storageService';
 import { Onboarding } from './views/Onboarding';
 import { Dashboard } from './views/Dashboard';
 import { Tracker } from './views/Tracker';
@@ -12,7 +12,8 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(ViewState.ONBOARDING);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [logs, setLogs] = useState<DailyLog[]>([]);
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
   const [targetDate, setTargetDate] = useState<string | undefined>(undefined);
 
   const refreshUser = () => {
@@ -23,17 +24,28 @@ const App: React.FC = () => {
   useEffect(() => {
     const existingUser = getUser();
     const existingLogs = getLogs();
-    const existingChat = getChatHistory();
+    const existingSessions = getChatSessions();
+    const lastActiveId = getActiveSessionId();
 
     if (existingUser && existingUser.isOnboarded) {
       setUser(existingUser);
       setLogs(existingLogs);
-      setChatHistory(existingChat);
+      setChatSessions(existingSessions);
+      setActiveSessionIdState(lastActiveId);
       setView(ViewState.DASHBOARD);
     } else {
       setView(ViewState.ONBOARDING);
     }
   }, []);
+
+  const handleUpdateActiveSessionId = (id: string | null) => {
+    setActiveSessionIdState(id);
+    setActiveSessionId(id);
+  };
+
+  const handleUpdateSessions = (updatedSessions: ChatSession[]) => {
+    setChatSessions(updatedSessions);
+  };
 
   const handleOnboardingComplete = (newUser: UserProfile) => {
     setUser(newUser);
@@ -44,9 +56,9 @@ const App: React.FC = () => {
     const updatedLogs = getLogs();
     setLogs(updatedLogs);
     if (user) {
-        const updatedUser = { ...user, clarityPoints: user.clarityPoints + 10 };
-        setUser(updatedUser);
-        localStorage.setItem('mara_user_v1', JSON.stringify(updatedUser));
+      const updatedUser = { ...user, clarityPoints: user.clarityPoints + 10 };
+      setUser(updatedUser);
+      localStorage.setItem('mara_user_v1', JSON.stringify(updatedUser));
     }
   };
 
@@ -75,24 +87,33 @@ const App: React.FC = () => {
         return <Onboarding onComplete={handleOnboardingComplete} />;
       case ViewState.TRACKER:
         return (
-          <Tracker 
+          <Tracker
             initialDate={targetDate}
-            onComplete={() => { refreshLogs(); setView(ViewState.DASHBOARD); setTargetDate(undefined); }} 
-            onCancel={() => { setView(ViewState.DASHBOARD); setTargetDate(undefined); }} 
+            onComplete={() => { refreshLogs(); setView(ViewState.DASHBOARD); setTargetDate(undefined); }}
+            onCancel={() => { setView(ViewState.DASHBOARD); setTargetDate(undefined); }}
           />
         );
       case ViewState.CHAT:
-        return <Chat logs={logs} history={chatHistory} onUpdateHistory={setChatHistory} onRefreshUser={refreshUser} />;
+        return (
+          <Chat
+            logs={logs}
+            sessions={chatSessions}
+            activeSessionId={activeSessionId}
+            onUpdateSessions={handleUpdateSessions}
+            onActiveSessionChange={handleUpdateActiveSessionId}
+            onRefreshUser={refreshUser}
+          />
+        );
       case ViewState.ANALYSIS:
         return <Analysis logs={logs} toxicAnalysis={user?.toxicAnalysis} onEditLog={handleNavigateToTracker} />;
       case ViewState.DASHBOARD:
       default:
         return user ? (
-          <Dashboard 
-            user={user} 
-            logs={logs} 
-            metrics={calculateMetrics()} 
-            onNavigate={(v) => v === ViewState.TRACKER ? handleNavigateToTracker() : setView(v)} 
+          <Dashboard
+            user={user}
+            logs={logs}
+            metrics={calculateMetrics()}
+            onNavigate={(v) => v === ViewState.TRACKER ? handleNavigateToTracker() : setView(v)}
           />
         ) : null;
     }
