@@ -51,6 +51,10 @@ export const saveChatHistory = (messages: ChatMessage[]): void => {
   localStorage.setItem(KEYS.CHAT, JSON.stringify(messages));
 };
 
+export const clearChatHistory = (): void => {
+  localStorage.removeItem(KEYS.CHAT);
+};
+
 export const calculateDailyScore = (
   rating: number,
   energy: number,
@@ -60,15 +64,15 @@ export const calculateDailyScore = (
 ): number => {
   // Base Score Calculation according to PRD
   let score = 30 + (rating * 4) + (energy * 10) + (vision ? 20 : 0);
-  
+
   // Red Flag Penalty (-30%)
   if (redFlag) score = score * 0.7;
-  
+
   // Attribution Filter: If mood is low but caused by external factors, 
   // we reduce the impact on the relationship score
   if (rating < 5 && sourceIsExternal && !redFlag) {
     score = score * 1.2; // Mitigation
   }
-  
+
   return Math.min(100, Math.max(0, Math.round(score)));
 };

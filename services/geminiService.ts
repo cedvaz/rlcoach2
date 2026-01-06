@@ -29,7 +29,7 @@ const getAIClient = () => {
 
 export const initializeChat = (logs: DailyLog[], existingHistory: ChatMessage[]) => {
   const ai = getAIClient();
-  const recentLogs = logs.slice(0, 5).map(l => 
+  const recentLogs = logs.slice(0, 5).map(l =>
     `Date: ${l.date}, Mood: ${l.rating}/10, Energy: ${l.energy}, RedFlag: ${l.redFlag}, Note: ${l.note}`
   ).join('\n');
 
@@ -53,7 +53,7 @@ export const sendMessageToMara = async (message: string, onUpdateAnalysis?: () =
 
   try {
     const result = await chatSession.sendMessage({ message });
-    
+
     // Check for tool calls directly on the response object
     if (result.functionCalls) {
       for (const call of result.functionCalls) {
@@ -62,19 +62,23 @@ export const sendMessageToMara = async (message: string, onUpdateAnalysis?: () =
           analysis.timestamp = Date.now();
           saveToxicAnalysis(analysis);
           if (onUpdateAnalysis) onUpdateAnalysis();
-          
+
           // Inform model tool was executed via chat interface
-          await chatSession.sendMessage({ 
-            message: "TOOL_RESPONSE: Toxic Analysis has been saved successfully to the user's dashboard." 
+          await chatSession.sendMessage({
+            message: "TOOL_RESPONSE: Toxic Analysis has been saved successfully to the user's dashboard."
           });
         }
       }
     }
-    
+
     // Access the text property directly (not a method call) as per GenerateContentResponse guidelines
     return result.text || "I'm listening...";
   } catch (error) {
     console.error("Gemini Error:", error);
     return "I'm feeling a bit foggy right now. Let's try again in a moment.";
   }
+};
+
+export const resetChatSession = () => {
+  chatSession = null;
 };
